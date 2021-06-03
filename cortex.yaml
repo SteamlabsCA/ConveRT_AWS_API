@@ -1,0 +1,8 @@
+- name: convert
+  kind: RealtimeAPI
+  handler:
+    type: python
+    path: handler.py
+  compute:
+    cpu: 1
+
