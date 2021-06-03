@@ -1,5 +1,5 @@
 {
     "inputPrompt": "What's for dinner?",
-    "responseList": ["I like pie","Roasted goat is nice but takes a long time to {make}","a fresh fruit bowl sounds {nice}"],
+    "responseList": ["I like pie","Roasted goat is nice but takes a long time to {cook}","a fresh fruit bowl sounds {nice}"],
     "language": "EN"
 }
