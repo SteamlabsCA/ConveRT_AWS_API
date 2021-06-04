@@ -38,7 +38,7 @@ class Handler:
         self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
         self.model = GPT2LMHeadModel.from_pretrained("gpt2").to(self.device)
 
-        #Setup Amazon translate, enter your credentials below
+        #Setup Amazon translate
         self.translate = boto3.client(
             service_name=login.service_name,
             region_name=login.region_name,
@@ -54,7 +54,7 @@ class Handler:
         prompt = payload["inputPrompt"] #Store payload prompt
         response_encodings = [] #List where response encodings will be stored
         
-        #Setup mySQL database connector, enter your credential below
+        #Setup mySQL database connector
         host = login.host
         user = login.user
         password = login.password
@@ -136,7 +136,7 @@ class Handler:
         response_encodings = np.concatenate(response_encodings)
 
         #Consider top 5 responses 
-        responseChoices=5 
+        responseChoices=payload["consider"] 
         # Score responses using ConveRT
         context_encoding = self.sess.run(self.context_encoding_tensor, feed_dict={self.text_placeholder: [prompt]}) #This line encodes context (inputPrompt)
         scores = np.dot(response_encodings, context_encoding.T)
