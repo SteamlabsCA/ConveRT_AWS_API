@@ -161,21 +161,23 @@ class Handler:
         response = responses[responseChoice]
         
         #GPT-2 SECTION
-        #Check if Response has a word in curly brackets ("{..}"), if so drop it 
-        if ('{' in response):
-            sep='{'
-            response = response.split(sep,1)[0]
+        #Check if user has free tier API key, if so skip this section
+        if(payload["apiKey"]!="fCoRU16bE23TvHm79DKw3U4v4n0EzFI2j5NoA00g"):
+            #Check if Response has a word in curly brackets ("{..}"), if so replace with generated text 
+            if ('{' in response):
+                sep='{'
+                response = response.split(sep,1)[0]
             
-            #Generate new text to replace the dropped word
-            input_length = len(response.split())
-            tokens = self.tokenizer.encode(response, return_tensors="pt").to(self.device)
-            prediction = self.model.generate(tokens, max_length=input_length + 50, do_sample=True)
-            response = self.tokenizer.decode(prediction[0])
+                #Generate new text to replace the dropped word
+                input_length = len(response.split())
+                tokens = self.tokenizer.encode(response, return_tensors="pt").to(self.device)
+                prediction = self.model.generate(tokens, max_length=input_length + 30, do_sample=True)
+                response = self.tokenizer.decode(prediction[0])
 
-            #If statement to end sentance at a period or comma so text generation does not end on a cliff hanger.
-            #if ('.' in response):
-            #    sep = '.'
-            #    response = response.split(sep, 1)[0]
+                #If statement to end sentance at a period or comma so text generation does not end on a cliff hanger.
+                #if ('.' in response):
+                #    sep = '.'
+                #    response = response.split(sep, 1)[0]
 
         #Check if french mode is enabled - if so translate selected response back to french 
         if (payload["language"] == 'FR'):
