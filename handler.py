@@ -167,17 +167,22 @@ class Handler:
             if ('{' in response):
                 sep='{'
                 response = response.split(sep,1)[0]
+
+                #Combine the prompt + top response to give text generation context
+                response = "Prompt: "+prompt+" Response: "+response
             
                 #Generate new text to replace the dropped word
                 input_length = len(response.split())
                 tokens = self.tokenizer.encode(response, return_tensors="pt").to(self.device)
-                prediction = self.model.generate(tokens, max_length=input_length + 30, do_sample=True)
+                prediction = self.model.generate(tokens, max_length=input_length + 50, do_sample=True)
                 response = self.tokenizer.decode(prediction[0])
 
-                #If statement to end sentance at a period or comma so text generation does not end on a cliff hanger.
-                #if ('.' in response):
-                #    sep = '.'
-                #    response = response.split(sep, 1)[0]
+                #If statement to end sentance at a period so text generation does not end on a cliff hanger.
+                if ('.' in response):
+                    response=response.rsplit('.',1)[0]
+
+                #Drop the prompt portion, to get just the response + generated text again
+                response=response.rsplit('Response: ',1)[-1]
 
         #Check if french mode is enabled - if so translate selected response back to french 
         if (payload["language"] == 'FR'):
