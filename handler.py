@@ -19,6 +19,8 @@ import hashlib
 
 import login
 
+from better_profanity import profanity
+
 class Handler:
     def __init__(self, config):
         self.sess = tf.compat.v1.InteractiveSession(graph=tf.Graph()) #Tensorflow session used in interactive contexts
@@ -46,11 +48,10 @@ class Handler:
             aws_secret_access_key=login.aws_secret_access_key
         )
 
-
-
     def handle_post(self, payload):
 
         responses = payload["responseList"] #Store payload list (potential responses)
+        global prompt
         prompt = payload["inputPrompt"] #Store payload prompt
         response_encodings = [] #List where response encodings will be stored
         
@@ -144,6 +145,7 @@ class Handler:
         # Pick top 1 response
         top_index = np.argmax(scores)
         top_score = float(scores[top_index])
+        global response
         response = f"[{top_score:.3f}] {responses[top_index]}"
 
         # Find top {responseChoices} responses, and randomly pick one. Use score squared to prefer the higher ranked responses
@@ -158,32 +160,45 @@ class Handler:
 
         responseChoice = np.random.choice(top_scores[-responseChoices:], p=top_n_scores_p)
         top_score = scores[responseChoice]
-        response = responses[responseChoice]
+        response = responses[responseChoice] #Final response
+        OGresponse = response #Store original response 
         
         #GPT-2 SECTION
-        #Check if user has free tier API key, if so skip this section
-        if(payload["apiKey"]!="fCoRU16bE23TvHm79DKw3U4v4n0EzFI2j5NoA00g"):
+        #Text generation function, will be called later on
+        def Generate_Text():
+            #Combine the prompt + top response to give text generation context
+            global response
+            global prompt
+
+            #response = "Prompt: "+prompt+" Response: "+response
+            
+            #Generate new text to replace the dropped word
+            input_length = len(response.split())
+            tokens = self.tokenizer.encode(response, return_tensors="pt").to(self.device)
+            prediction = self.model.generate(tokens, max_length=input_length + 50, temperature=1, top_k=40, context=prompt, do_sample=True)
+            response = self.tokenizer.decode(prediction[0])
+
+            #If statement to end sentance at a period so text generation does not end on a cliff hanger.
+            if ('.' in response):
+                response=response.rsplit('.',1)[0]
+
+            #Censor any profanity
+            profanity.load_censor_words()
+            response = profanity.censor(response)
+
+        #Check if user has free tier API key, if so skip this section (text generation)
+        if(payload["apiKey"]!=login.freeKey):
             #Check if Response has a word in curly brackets ("{..}"), if so replace with generated text 
             if ('{' in response):
                 sep='{'
                 response = response.split(sep,1)[0]
+                Generate_Text()
 
-                #Combine the prompt + top response to give text generation context
-                response = "Prompt: "+prompt+" Response: "+response
-            
-                #Generate new text to replace the dropped word
-                input_length = len(response.split())
-                tokens = self.tokenizer.encode(response, return_tensors="pt").to(self.device)
-                prediction = self.model.generate(tokens, max_length=input_length + 50, do_sample=True)
-                response = self.tokenizer.decode(prediction[0])
-
-                #If statement to end sentance at a period so text generation does not end on a cliff hanger.
-                if ('.' in response):
-                    response=response.rsplit('.',1)[0]
-
-                #Drop the prompt portion, to get just the response + generated text again
-                response=response.rsplit('Response: ',1)[-1]
-
+                #Check if any censored profanity is found, if so re generate new words for the response
+                while ('*' in response):
+                    response = OGresponse
+                    Generate_Text()
+                
         #Check if french mode is enabled - if so translate selected response back to french 
         if (payload["language"] == 'FR'):
             result = self.translate.translate_text(Text=response, 
@@ -192,3 +207,6 @@ class Handler:
 
         #Return selected response
         return response
+
+    
+
